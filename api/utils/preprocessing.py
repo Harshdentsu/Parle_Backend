@@ -99,6 +99,10 @@ def normalize_variant(text: str):
 def infer_missing_values(text, weight, quantity):
     numbers = extract_numbers(text)
 
+    # Treat standalone 50/100 as weight when the user replies with just the size.
+    if weight is None and len(numbers) == 1 and numbers[0] in [50, 100]:
+        weight = numbers[0]
+
     # Remove already used weight
     if weight and weight in numbers:
         numbers.remove(weight)
