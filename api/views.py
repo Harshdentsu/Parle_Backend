@@ -10,13 +10,11 @@ from api.services.decision_engine import (
     WELCOME_MESSAGE,
     autofill_from_sku,
     enrich_state_from_product_text,
+    get_image_for_product_name,
     get_next_question,
-    get_question_image,
-    get_question_products,
     has_product_matches,
     populate_state_from_product,
     resolve_product_from_state,
-    should_show_variant_image,
 )
 # -----------------------------------
 # FINAL RESPONSE BUILDER
@@ -198,9 +196,10 @@ class ParleProduct(APIView):
 
         next_q = get_next_question(state)
         print(f"\nNext Question: {next_q}")
-        show_variant_image = should_show_variant_image(state)
-        question_products = [] if not is_complete(state) else get_question_products(state, product)
-        question_image = get_question_image(state, product) if show_variant_image else None
+        question_image = None
+
+        if state.get("product_name") and not state.get("variant") and next_q != PRODUCT_NOT_FOUND_MESSAGE:
+            question_image = get_image_for_product_name(state["product_name"])
 
         if next_q == "DONE" and is_complete(state):
             reply = build_final_response(state)
@@ -211,13 +210,6 @@ class ParleProduct(APIView):
             reply = next_q
             is_final = False
             final_biscuit = []
-
-        if not is_final:
-            if show_variant_image:
-                question_products = []
-            else:
-                question_products = []
-                question_image = None
 
         localized_reply = localize_assistant_text(
             reply,
@@ -231,7 +223,7 @@ class ParleProduct(APIView):
             state,
             history,
             is_final=is_final,
-            biscuit=final_biscuit if is_final else question_products,
+            biscuit=final_biscuit if is_final else [],
             imageurl=None if is_final else question_image,
             bs64audio=localized_reply["audio_base64"],
             transcript=transcript,
