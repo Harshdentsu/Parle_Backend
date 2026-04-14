@@ -86,66 +86,16 @@ def list_matching_products(state):
     return matches
 
 
-def build_product_option(product):
-    variant = infer_variant_from_brand(product.brand)
-    return {
-        "sku_id": int(product.sku_id),
-        "brand": product.brand,
-        "variant": variant,
-        "mrp": product.mrp,
-        "min_order": product.min_order,
-        "box_amount": product.box_amount,
-        "image_url": product.image_url,
-        "imageurl": product.image_url,
-        "quantity": 1,
-        "total_cost": product.mrp,
-    }
-
-
-def get_variant_options(state):
-    if state.get("sku_id") or not state.get("product_name") or state.get("variant"):
-        return []
-
-    options = []
-    seen_variants = set()
-
-    for product in list_matching_products(state):
-        variant = infer_variant_from_brand(product.brand)
-        if not variant or variant in seen_variants:
-            continue
-        seen_variants.add(variant)
-        options.append(build_product_option(product))
-
-    return options
-
-
-def get_question_products(state, product=None):
-    variant_options = get_variant_options(state)
-    if variant_options:
-        return variant_options
-
-    if product:
-        return [build_product_option(product)]
-
-    return []
-
-
-def should_show_variant_image(state):
-    return bool(state.get("product_name")) and not state.get("variant") and len(get_variants(state["product_name"])) > 1
-
-
-def get_question_image(state, product=None):
-    if not should_show_variant_image(state):
+def get_image_for_product_name(product_name):
+    if not product_name:
         return None
 
-    options = get_variant_options(state)
-    if options:
-        return options[0].get("imageurl") or options[0].get("image_url")
-
-    if product:
-        return product.image_url
-
-    return None
+    product = (
+        ParleProduct.objects.filter(brand__icontains=product_name)
+        .order_by("sku_id")
+        .first()
+    )
+    return product.image_url if product else None
 
 
 def get_variants(product_name):
